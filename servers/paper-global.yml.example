@@ -1,0 +1,9 @@
+# Copy into each Paper server's config/paper-global.yml after setting the same secret as Velocity.
+_version: 31
+proxies:
+  velocity:
+    enabled: true
+    online-mode: true
+    secret: "REPLACE_WITH_A_LONG_RANDOM_SECRET"
+  bungee-cord:
+    online-mode: true
