@@ -7,6 +7,11 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.Material;
+import org.bukkit.inventory.meta.ItemMeta;
+import java.util.List;
+import java.util.ArrayList;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -98,6 +103,38 @@ public final class EldorasCore extends JavaPlugin implements Listener {
                     + " | EXP: " + ChatColor.GREEN + data.exp + "/" + expRequired(data.level));
             return true;
         }
+        if (command.getName().equalsIgnoreCase("yang")) {
+            if (!(sender instanceof Player player)) { sender.sendMessage("Oyuncu komutu."); return true; }
+            PlayerProgress data = getProgress(player);
+            player.sendMessage(ChatColor.GOLD + "Yang: " + data.yang + " | Won: " + (data.yang / 100000000));
+            return true;
+        }
+        if (command.getName().equalsIgnoreCase("blacksmith")) {
+            if (!(sender instanceof Player player)) { sender.sendMessage("Oyuncu komutu."); return true; }
+            if (args.length == 1 && args[0].equalsIgnoreCase("upgrade")) {
+                ItemStack item = player.getInventory().getItemInMainHand();
+                if (item.getType().isAir()) { player.sendMessage(ChatColor.RED + "Elinde geliştirilebilir bir eşya tut."); return true; }
+                int current = getUpgradeLevel(item);
+                if (current >= 9) { player.sendMessage(ChatColor.RED + "Bu eşya zaten +9."); return true; }
+                int cost = 1000 * (current + 1);
+                PlayerProgress data = getProgress(player);
+                int ingots = current < 3 ? 2 : current < 6 ? 4 : 6;
+                if (data.yang < cost || !hasMaterial(player, Material.IRON_INGOT, ingots)) {
+                    player.sendMessage(ChatColor.RED + "Gerekli: " + cost + " Yang ve " + ingots + " Demir Külçesi."); return true;
+                }
+                data.yang -= cost;
+                removeMaterial(player, Material.IRON_INGOT, ingots);
+                double chance = getConfig().getDouble("blacksmith.success-chance-" + current, Math.max(0.35, 0.90 - current * 0.07));
+                if (Math.random() <= chance) {
+                    setUpgradeLevel(item, current + 1);
+                    player.sendMessage(ChatColor.GREEN + "Başarılı! Eşyan artık +" + (current + 1) + ".");
+                } else player.sendMessage(ChatColor.RED + "Geliştirme başarısız! Eşyanın seviyesi değişmedi.");
+                saveProgress(player.getUniqueId());
+                return true;
+            }
+            player.sendMessage(ChatColor.YELLOW + "Kullanım: /blacksmith upgrade");
+            return true;
+        }
         if (command.getName().equalsIgnoreCase("class")) {
             if (!(sender instanceof Player player)) { sender.sendMessage("Oyuncu komutu."); return true; }
             PlayerProgress data = getProgress(player);
@@ -148,6 +185,18 @@ public final class EldorasCore extends JavaPlugin implements Listener {
             sender.sendMessage(ChatColor.RED + "Bu komutu kullanma yetkin yok.");
             return true;
         }
+        if (args.length == 3 && args[0].equalsIgnoreCase("giveyang")) {
+            Player target = Bukkit.getPlayerExact(args[1]);
+            try {
+                long amount = Long.parseLong(args[2]);
+                if (target == null || amount <= 0) throw new IllegalArgumentException();
+                PlayerProgress targetData = getProgress(target);
+                targetData.yang = Math.addExact(targetData.yang, amount);
+                saveProgress(target.getUniqueId());
+                sender.sendMessage(ChatColor.GREEN + target.getName() + " oyuncusuna " + amount + " Yang verildi.");
+            } catch (RuntimeException ex) { sender.sendMessage(ChatColor.RED + "Kullanım: /eldoras giveyang <oyuncu> <pozitif miktar>"); }
+            return true;
+        }
         if (args.length == 2 && args[0].equalsIgnoreCase("giveexp")) {
             Player target = Bukkit.getPlayerExact(args[1]);
             sender.sendMessage(target == null ? ChatColor.RED + "Oyuncu çevrimiçi değil."
@@ -195,6 +244,45 @@ public final class EldorasCore extends JavaPlugin implements Listener {
         cooldowns.put(player.getUniqueId(), now + Math.max(1, cooldown) * 1000L);
     }
 
+
+    private int getUpgradeLevel(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null || meta.getLore() == null) return 0;
+        for (String line : meta.getLore()) {
+            String prefix = ChatColor.GOLD + "Eldoras +";
+            if (line.startsWith(prefix)) {
+                try { return Integer.parseInt(line.substring(prefix.length())); }
+                catch (NumberFormatException ignored) { return 0; }
+            }
+        }
+        return 0;
+    }
+
+    private void setUpgradeLevel(ItemStack item, int level) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+        lore.removeIf(line -> line.startsWith(ChatColor.GOLD + "Eldoras +"));
+        lore.add(ChatColor.GOLD + "Eldoras +" + level);
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+    }
+
+    private boolean hasMaterial(Player player, Material material, int amount) {
+        return player.getInventory().containsAtLeast(new ItemStack(material), amount);
+    }
+
+    private void removeMaterial(Player player, Material material, int amount) {
+        int remaining = amount;
+        for (ItemStack stack : player.getInventory().getStorageContents()) {
+            if (stack == null || stack.getType() != material) continue;
+            int take = Math.min(remaining, stack.getAmount());
+            stack.setAmount(stack.getAmount() - take);
+            remaining -= take;
+            if (remaining == 0) break;
+        }
+    }
+
     private PlayerProgress getProgress(Player player) {
         return progress.computeIfAbsent(player.getUniqueId(), this::loadProgress);
     }
@@ -232,6 +320,7 @@ public final class EldorasCore extends JavaPlugin implements Listener {
         data.skillPoints = Math.max(0, yaml.getInt("skill-points", 0));
         data.playerClass = yaml.getString("class");
         data.learnedSkills.addAll(yaml.getStringList("learned-skills"));
+        data.yang = Math.max(0L, yaml.getLong("yang", 0L));
         while (data.level < getMaxLevel() && data.exp >= expRequired(data.level)) {
             data.exp -= expRequired(data.level);
             data.level++;
@@ -250,6 +339,7 @@ public final class EldorasCore extends JavaPlugin implements Listener {
         yaml.set("skill-points", data.skillPoints);
         yaml.set("class", data.playerClass);
         yaml.set("learned-skills", new java.util.ArrayList<>(data.learnedSkills));
+        yaml.set("yang", data.yang);
         try { yaml.save(file); }
         catch (IOException ex) { getLogger().severe("Could not save player " + uuid + ": " + ex.getMessage()); }
     }
@@ -259,6 +349,7 @@ public final class EldorasCore extends JavaPlugin implements Listener {
         private long exp = 0;
         private int skillPoints = 0;
         private String playerClass;
+        private long yang = 0L;
         private final java.util.Set<String> learnedSkills = new java.util.HashSet<>();
     }
 }
