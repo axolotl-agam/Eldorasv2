@@ -1,0 +1,11 @@
+settings:
+  max-level: 120
+  skill-points-per-level: 1
+  starting-level: 1
+economy:
+  yang-per-won: 100000000
+classes:
+  - WARRIOR
+  - NINJA
+  - SHAMAN
+  - ASSASSIN
