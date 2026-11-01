@@ -32,7 +32,7 @@ import java.util.UUID;
 public final class EldorasCore extends JavaPlugin implements Listener {
     private final Map<UUID, PlayerProgress> progress = new HashMap<>();
     private File playerFolder;
-    private final Map<UUID, Long> cooldowns = new HashMap<>();
+    private final Map<String, Long> cooldowns = new HashMap<>();
     private final java.util.Set<UUID> empoweredHits = new java.util.HashSet<>();
 
     @Override
@@ -66,7 +66,10 @@ public final class EldorasCore extends JavaPlugin implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         saveProgress(event.getPlayer().getUniqueId());
-        progress.remove(event.getPlayer().getUniqueId());
+        UUID uuid = event.getPlayer().getUniqueId();
+        progress.remove(uuid);
+        empoweredHits.remove(uuid);
+        cooldowns.keySet().removeIf(key -> key.startsWith(uuid + ":"));
     }
 
     @EventHandler
@@ -106,7 +109,8 @@ public final class EldorasCore extends JavaPlugin implements Listener {
         if (command.getName().equalsIgnoreCase("yang")) {
             if (!(sender instanceof Player player)) { sender.sendMessage("Oyuncu komutu."); return true; }
             PlayerProgress data = getProgress(player);
-            player.sendMessage(ChatColor.GOLD + "Yang: " + data.yang + " | Won: " + (data.yang / 100000000));
+            long rate = Math.max(1L, getConfig().getLong("economy.yang-per-won", 100000000L));
+            player.sendMessage(ChatColor.GOLD + "Yang: " + data.yang + " | Won: " + (data.yang / rate));
             return true;
         }
         if (command.getName().equalsIgnoreCase("blacksmith")) {
@@ -227,7 +231,8 @@ public final class EldorasCore extends JavaPlugin implements Listener {
     private void castSkill(Player player, PlayerProgress data, String skill) {
         if (!data.learnedSkills.contains(skill)) { player.sendMessage(ChatColor.RED + "Önce bu yeteneği öğrenmelisin."); return; }
         long now = System.currentTimeMillis();
-        long ready = cooldowns.getOrDefault(player.getUniqueId(), 0L);
+        String cooldownKey = player.getUniqueId() + ":" + skill;
+        long ready = cooldowns.getOrDefault(cooldownKey, 0L);
         if (now < ready) { player.sendMessage(ChatColor.RED + "Bekleme: " + ((ready - now + 999) / 1000) + " saniye."); return; }
         int cooldown = getConfig().getInt("skills." + skill + ".cooldown-seconds", 8);
         switch (skill) {
@@ -241,7 +246,7 @@ public final class EldorasCore extends JavaPlugin implements Listener {
             case "POISON_BLADE" -> { player.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 100, 0)); player.sendMessage(ChatColor.GREEN + "Zehirli Bıçak etkin; vuruşların zehir uygulayabilir."); }
             default -> { player.sendMessage(ChatColor.RED + "Aktif etki tanımlı değil."); return; }
         }
-        cooldowns.put(player.getUniqueId(), now + Math.max(1, cooldown) * 1000L);
+        cooldowns.put(cooldownKey, now + Math.max(1, cooldown) * 1000L);
     }
 
 
@@ -298,7 +303,7 @@ public final class EldorasCore extends JavaPlugin implements Listener {
     private void addExperience(Player player, long amount) {
         PlayerProgress data = getProgress(player);
         if (data.level >= getMaxLevel()) return;
-        data.exp = Math.min(Long.MAX_VALUE - amount, data.exp) + amount;
+        data.exp = data.exp > Long.MAX_VALUE - amount ? Long.MAX_VALUE : data.exp + amount;
         while (data.level < getMaxLevel() && data.exp >= expRequired(data.level)) {
             data.exp -= expRequired(data.level);
             data.level++;
@@ -326,6 +331,7 @@ public final class EldorasCore extends JavaPlugin implements Listener {
             data.level++;
             data.skillPoints += Math.max(0, getConfig().getInt("settings.skill-points-per-level", 1));
         }
+        if (data.level >= getMaxLevel()) data.exp = 0;
         return data;
     }
 
