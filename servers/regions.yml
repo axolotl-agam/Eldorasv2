@@ -1,0 +1,8 @@
+regions:
+  valoria: { display: "Valoria", server: "valoria", min-level: 1, max-level: 20, spawn: "world,0,80,0,0,0" }
+  nordia: { display: "Nordia", server: "nordia", min-level: 21, max-level: 40, spawn: "world,0,80,0,0,0" }
+  aetherion: { display: "Aetherion", server: "aetherion", min-level: 41, max-level: 60, spawn: "world,0,100,0,0,0" }
+  thalassor: { display: "Thalassor", server: "thalassor", min-level: 61, max-level: 80, spawn: "world,0,70,0,0,0" }
+  varkhazan: { display: "Varkhazan", server: "varkhazan", min-level: 81, max-level: 100, spawn: "world,0,80,0,0,0" }
+  mechanoria: { display: "Mechanoria", server: "mechanoria", min-level: 101, max-level: 110, spawn: "world,0,80,0,0,0" }
+  eryndor: { display: "Eryndor", server: "eryndor", min-level: 111, max-level: 120, spawn: "world,0,100,0,0,0" }
