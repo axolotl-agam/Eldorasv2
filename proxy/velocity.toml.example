@@ -1,0 +1,23 @@
+# Template only. Generate a unique forwarding secret on the host.
+config-version = "2.7"
+bind = "0.0.0.0:25565"
+motd = "&6Eldoras V2 &7| MMORPG"
+show-max-players = 500
+online-mode = true
+force-key-authentication = true
+player-info-forwarding-mode = " modern "
+forwarding-secret-file = "forwarding.secret"
+announce-forge = false
+kick-existing-players = false
+ping-passthrough = "DISABLED"
+[servers]
+valoria = "127.0.0.1:25566"
+nordia = "127.0.0.1:25567"
+aetherion = "127.0.0.1:25568"
+thalassor = "127.0.0.1:25569"
+varkhazan = "127.0.0.1:25570"
+mechanoria = "127.0.0.1:25571"
+eryndor = "127.0.0.1:25572"
+try = ["valoria"]
+[forced-hosts]
+"play.example.com" = ["valoria"]
