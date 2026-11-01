@@ -12,6 +12,12 @@ commands:
   level:
     description: Oyuncunun MMORPG seviyesini ve EXP durumunu gösterir
     usage: /level
+  class:
+    description: MMORPG sınıfını görüntüler veya seçer
+    usage: /class [choose <sınıf>]
+  skills:
+    description: Yetenek puanlarını ve öğrenilen yetenekleri gösterir
+    usage: /skills [learn <yetenek>]
 permissions:
   eldoras.admin:
     default: op
