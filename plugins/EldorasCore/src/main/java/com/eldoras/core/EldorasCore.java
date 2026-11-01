@@ -295,9 +295,10 @@ public final class EldorasCore extends JavaPlugin implements Listener {
     private int getMaxLevel() { return Math.max(1, getConfig().getInt("settings.max-level", 120)); }
 
     private long expRequired(int level) {
-        double base = getConfig().getDouble("experience.base-required", 100.0);
+        long base = Math.max(1L, getConfig().getLong("experience.base-required", 100L));
         double growth = getConfig().getDouble("experience.level-growth", 1.18);
-        return Math.max(1L, (long) Math.floor(base * Math.pow(growth, Math.max(0, level - 1))));
+        if (!Double.isFinite(growth) || growth < 1.0) growth = 1.18;
+        return ExperienceCurve.required(base, growth, Math.max(1, level));
     }
 
     private void addExperience(Player player, long amount) {
