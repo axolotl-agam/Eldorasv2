@@ -1,0 +1,11 @@
+# Backend servers must never be exposed directly to the public internet.
+server-port=25566
+server-ip=127.0.0.1
+online-mode=false
+motd=Eldoras V2 Backend
+max-players=100
+view-distance=8
+simulation-distance=6
+spawn-protection=0
+enable-rcon=false
+enable-query=false
