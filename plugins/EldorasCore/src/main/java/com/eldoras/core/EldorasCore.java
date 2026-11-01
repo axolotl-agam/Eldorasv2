@@ -83,6 +83,50 @@ public final class EldorasCore extends JavaPlugin implements Listener {
                     + " | EXP: " + ChatColor.GREEN + data.exp + "/" + expRequired(data.level));
             return true;
         }
+        if (command.getName().equalsIgnoreCase("class")) {
+            if (!(sender instanceof Player player)) { sender.sendMessage("Oyuncu komutu."); return true; }
+            PlayerProgress data = getProgress(player);
+            if (args.length == 0) {
+                player.sendMessage(ChatColor.GOLD + "Sınıfın: " + (data.playerClass == null ? "Seçilmedi" : data.playerClass));
+                player.sendMessage(ChatColor.GRAY + "Seçim: /class choose WARRIOR|NINJA|SHAMAN|ASSASSIN");
+                return true;
+            }
+            if (args.length == 2 && args[0].equalsIgnoreCase("choose")) {
+                if (data.playerClass != null) { player.sendMessage(ChatColor.RED + "Sınıfın zaten seçilmiş; şimdilik değiştirilemez."); return true; }
+                String chosen = args[1].toUpperCase();
+                if (!getConfig().getStringList("classes").contains(chosen)) {
+                    player.sendMessage(ChatColor.RED + "Geçersiz sınıf. WARRIOR, NINJA, SHAMAN veya ASSASSIN seç."); return true;
+                }
+                data.playerClass = chosen;
+                saveProgress(player.getUniqueId());
+                player.sendMessage(ChatColor.GREEN + "Sınıfın seçildi: " + chosen);
+                return true;
+            }
+            player.sendMessage(ChatColor.YELLOW + "Kullanım: /class veya /class choose <sınıf>");
+            return true;
+        }
+        if (command.getName().equalsIgnoreCase("skills")) {
+            if (!(sender instanceof Player player)) { sender.sendMessage("Oyuncu komutu."); return true; }
+            PlayerProgress data = getProgress(player);
+            if (args.length == 2 && args[0].equalsIgnoreCase("learn")) {
+                String skill = args[1].toUpperCase();
+                String requiredClass = getConfig().getString("skills." + skill + ".class", "");
+                int cost = getConfig().getInt("skills." + skill + ".cost", 1);
+                if (data.playerClass == null) { player.sendMessage(ChatColor.RED + "Önce sınıf seçmelisin."); return true; }
+                if (requiredClass.isEmpty() || !requiredClass.equalsIgnoreCase(data.playerClass)) { player.sendMessage(ChatColor.RED + "Bu yetenek sınıfına uygun değil veya mevcut değil."); return true; }
+                if (data.learnedSkills.contains(skill)) { player.sendMessage(ChatColor.YELLOW + "Bu yeteneği zaten öğrendin."); return true; }
+                if (data.skillPoints < cost) { player.sendMessage(ChatColor.RED + "Yeterli yetenek puanın yok."); return true; }
+                data.skillPoints -= cost;
+                data.learnedSkills.add(skill);
+                saveProgress(player.getUniqueId());
+                player.sendMessage(ChatColor.GREEN + skill + " yeteneğini öğrendin!");
+                return true;
+            }
+            player.sendMessage(ChatColor.GOLD + "Yetenek puanın: " + data.skillPoints);
+            player.sendMessage(ChatColor.GRAY + "Açık yetenekler: " + (data.learnedSkills.isEmpty() ? "Yok" : String.join(", ", data.learnedSkills)));
+            player.sendMessage(ChatColor.YELLOW + "Öğrenmek için: /skills learn <yetenek>");
+            return true;
+        }
         if (!command.getName().equalsIgnoreCase("eldoras")) return false;
         if (!sender.hasPermission("eldoras.admin")) {
             sender.sendMessage(ChatColor.RED + "Bu komutu kullanma yetkin yok.");
@@ -149,6 +193,8 @@ public final class EldorasCore extends JavaPlugin implements Listener {
         data.level = Math.min(getMaxLevel(), Math.max(1, yaml.getInt("level", 1)));
         data.exp = Math.max(0L, yaml.getLong("exp", 0L));
         data.skillPoints = Math.max(0, yaml.getInt("skill-points", 0));
+        data.playerClass = yaml.getString("class");
+        data.learnedSkills.addAll(yaml.getStringList("learned-skills"));
         while (data.level < getMaxLevel() && data.exp >= expRequired(data.level)) {
             data.exp -= expRequired(data.level);
             data.level++;
@@ -165,6 +211,8 @@ public final class EldorasCore extends JavaPlugin implements Listener {
         yaml.set("level", data.level);
         yaml.set("exp", data.exp);
         yaml.set("skill-points", data.skillPoints);
+        yaml.set("class", data.playerClass);
+        yaml.set("learned-skills", new java.util.ArrayList<>(data.learnedSkills));
         try { yaml.save(file); }
         catch (IOException ex) { getLogger().severe("Could not save player " + uuid + ": " + ex.getMessage()); }
     }
@@ -173,5 +221,7 @@ public final class EldorasCore extends JavaPlugin implements Listener {
         private int level = 1;
         private long exp = 0;
         private int skillPoints = 0;
+        private String playerClass;
+        private final java.util.Set<String> learnedSkills = new java.util.HashSet<>();
     }
 }
