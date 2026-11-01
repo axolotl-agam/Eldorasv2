@@ -1,0 +1,26 @@
+services:
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: eldoras
+      MARIADB_USER: eldoras
+      MARIADB_PASSWORD: ${ELDORAS_DB_PASSWORD:?Set ELDORAS_DB_PASSWORD in .env}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?Set MARIADB_ROOT_PASSWORD in .env}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ../database/schema:/docker-entrypoint-initdb.d:ro
+    networks: [eldoras-private]
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    volumes:
+      - redis_data:/data
+    networks: [eldoras-private]
+volumes:
+  mariadb_data:
+  redis_data:
+networks:
+  eldoras-private:
+    internal: true
