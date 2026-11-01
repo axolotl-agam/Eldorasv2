@@ -54,3 +54,5 @@ skills:
   POISON_BLADE:
     class: ASSASSIN
     cost: 1
+
+# Eldoras V2 build verification trigger: config remains backward-compatible.
