@@ -27,3 +27,30 @@ classes:
   - NINJA
   - SHAMAN
   - ASSASSIN
+
+# İlk yetenek ağacı taslağı. Her yetenek 1 puan harcar.
+skills:
+  POWER_STRIKE:
+    class: WARRIOR
+    cost: 1
+  IRON_SKIN:
+    class: WARRIOR
+    cost: 1
+  QUICK_SHOT:
+    class: NINJA
+    cost: 1
+  SHADOW_STEP:
+    class: NINJA
+    cost: 1
+  HEALING_LIGHT:
+    class: SHAMAN
+    cost: 1
+  HOLY_BARRIER:
+    class: SHAMAN
+    cost: 1
+  BACKSTAB:
+    class: ASSASSIN
+    cost: 1
+  POISON_BLADE:
+    class: ASSASSIN
+    cost: 1
