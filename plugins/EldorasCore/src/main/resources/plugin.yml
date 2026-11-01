@@ -12,6 +12,12 @@ commands:
   level:
     description: Oyuncunun MMORPG seviyesini ve EXP durumunu gösterir
     usage: /level
+  yang:
+    description: Oyuncunun Yang ve Won bakiyesini gösterir
+    usage: /yang
+  blacksmith:
+    description: Elde tutulan eşyayı malzeme ve Yang ile geliştirir
+    usage: /blacksmith upgrade
   class:
     description: MMORPG sınıfını görüntüler veya seçer
     usage: /class [choose <sınıf>]
