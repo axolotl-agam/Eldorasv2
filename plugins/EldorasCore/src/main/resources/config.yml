@@ -2,8 +2,26 @@ settings:
   max-level: 120
   skill-points-per-level: 1
   starting-level: 1
+
+experience:
+  base-required: 100
+  level-growth: 1.18
+  mob-default: 10
+  mob-values:
+    ZOMBIE: 12
+    SKELETON: 14
+    SPIDER: 11
+    CREEPER: 18
+    ENDERMAN: 35
+    BLAZE: 45
+    WITCH: 50
+    WITHER_SKELETON: 65
+    ELDER_GUARDIAN: 250
+    ENDER_DRAGON: 5000
+
 economy:
   yang-per-won: 100000000
+
 classes:
   - WARRIOR
   - NINJA
