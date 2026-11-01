@@ -1,0 +1,13 @@
+name: EldorasCore
+version: '0.1.0-SNAPSHOT'
+main: com.eldoras.core.EldorasCore
+api-version: '1.21.4'
+author: Eldoras
+ description: Core MMORPG systems for Eldoras V2
+commands:
+  eldoras:
+    description: EldorasCore administration and status
+    usage: /eldoras
+permissions:
+  eldoras.admin:
+    default: op
