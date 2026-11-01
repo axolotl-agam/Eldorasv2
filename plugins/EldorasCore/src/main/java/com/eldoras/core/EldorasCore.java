@@ -7,6 +7,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
@@ -24,6 +27,8 @@ import java.util.UUID;
 public final class EldorasCore extends JavaPlugin implements Listener {
     private final Map<UUID, PlayerProgress> progress = new HashMap<>();
     private File playerFolder;
+    private final Map<UUID, Long> cooldowns = new HashMap<>();
+    private final java.util.Set<UUID> empoweredHits = new java.util.HashSet<>();
 
     @Override
     public void onEnable() {
@@ -57,6 +62,16 @@ public final class EldorasCore extends JavaPlugin implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         saveProgress(event.getPlayer().getUniqueId());
         progress.remove(event.getPlayer().getUniqueId());
+    }
+
+    @EventHandler
+    public void onCombatHit(EntityDamageByEntityEvent event) {
+        if (!(event.getDamager() instanceof Player attacker)) return;
+        if (empoweredHits.remove(attacker.getUniqueId())) event.setDamage(event.getDamage() * 1.75);
+        PlayerProgress data = getProgress(attacker);
+        if (data.learnedSkills.contains("POISON_BLADE") && Math.random() < 0.25 && event.getEntity() instanceof org.bukkit.entity.LivingEntity victim) {
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 0));
+        }
     }
 
     @EventHandler
@@ -108,6 +123,7 @@ public final class EldorasCore extends JavaPlugin implements Listener {
         if (command.getName().equalsIgnoreCase("skills")) {
             if (!(sender instanceof Player player)) { sender.sendMessage("Oyuncu komutu."); return true; }
             PlayerProgress data = getProgress(player);
+            if (args.length == 2 && args[0].equalsIgnoreCase("cast")) { castSkill(player, data, args[1].toUpperCase()); return true; }
             if (args.length == 2 && args[0].equalsIgnoreCase("learn")) {
                 String skill = args[1].toUpperCase();
                 String requiredClass = getConfig().getString("skills." + skill + ".class", "");
@@ -124,7 +140,7 @@ public final class EldorasCore extends JavaPlugin implements Listener {
             }
             player.sendMessage(ChatColor.GOLD + "Yetenek puanın: " + data.skillPoints);
             player.sendMessage(ChatColor.GRAY + "Açık yetenekler: " + (data.learnedSkills.isEmpty() ? "Yok" : String.join(", ", data.learnedSkills)));
-            player.sendMessage(ChatColor.YELLOW + "Öğrenmek için: /skills learn <yetenek>");
+            player.sendMessage(ChatColor.YELLOW + "Öğren: /skills learn <yetenek> | Kullan: /skills cast <yetenek>");
             return true;
         }
         if (!command.getName().equalsIgnoreCase("eldoras")) return false;
@@ -156,6 +172,27 @@ public final class EldorasCore extends JavaPlugin implements Listener {
         sender.sendMessage(ChatColor.GRAY + "Seviye sınırı: " + getMaxLevel());
         sender.sendMessage(ChatColor.GRAY + "Komutlar: /level, /eldoras giveexp <oyuncu> <miktar>");
         return true;
+    }
+
+
+    private void castSkill(Player player, PlayerProgress data, String skill) {
+        if (!data.learnedSkills.contains(skill)) { player.sendMessage(ChatColor.RED + "Önce bu yeteneği öğrenmelisin."); return; }
+        long now = System.currentTimeMillis();
+        long ready = cooldowns.getOrDefault(player.getUniqueId(), 0L);
+        if (now < ready) { player.sendMessage(ChatColor.RED + "Bekleme: " + ((ready - now + 999) / 1000) + " saniye."); return; }
+        int cooldown = getConfig().getInt("skills." + skill + ".cooldown-seconds", 8);
+        switch (skill) {
+            case "POWER_STRIKE" -> { empoweredHits.add(player.getUniqueId()); player.sendMessage(ChatColor.GOLD + "Güçlü Darbe hazır: sonraki yakın dövüş vuruşun %75 fazla hasar verir."); }
+            case "IRON_SKIN" -> { player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, 100, 0)); player.sendMessage(ChatColor.GREEN + "Demir Deri etkin: 5 saniye direnç."); }
+            case "QUICK_SHOT" -> { player.launchProjectile(org.bukkit.entity.Arrow.class).setVelocity(player.getLocation().getDirection().multiply(3.0)); player.sendMessage(ChatColor.GREEN + "Hızlı Atış!"); }
+            case "SHADOW_STEP" -> { player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 100, 1)); player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 40, 0)); player.sendMessage(ChatColor.GREEN + "Gölge Adımı!"); }
+            case "HEALING_LIGHT" -> { player.setHealth(Math.min(player.getMaxHealth(), player.getHealth() + 6.0)); player.sendMessage(ChatColor.GREEN + "Işıkla 3 kalp iyileştin."); }
+            case "HOLY_BARRIER" -> { player.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 200, 1)); player.sendMessage(ChatColor.GREEN + "Kutsal Kalkan etkin."); }
+            case "BACKSTAB" -> { empoweredHits.add(player.getUniqueId()); player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 60, 1)); player.sendMessage(ChatColor.GREEN + "Arkadan Bıçaklama hazır!"); }
+            case "POISON_BLADE" -> { player.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 100, 0)); player.sendMessage(ChatColor.GREEN + "Zehirli Bıçak etkin; vuruşların zehir uygulayabilir."); }
+            default -> { player.sendMessage(ChatColor.RED + "Aktif etki tanımlı değil."); return; }
+        }
+        cooldowns.put(player.getUniqueId(), now + Math.max(1, cooldown) * 1000L);
     }
 
     private PlayerProgress getProgress(Player player) {
